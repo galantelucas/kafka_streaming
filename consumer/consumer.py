@@ -40,7 +40,10 @@ cur.execute('''
     CREATE TABLE IF NOT EXISTS sales (
         sale_id SERIAL PRIMARY KEY,
         product VARCHAR(255),
-        amount NUMERIC
+        amount NUMERIC,
+        latitude NUMERIC,
+        longitude NUMERIC,
+        sale_date DATE
     )
 ''')
 conn.commit()
@@ -58,8 +61,8 @@ try:
         data = message.value
         try:
             cur.execute(
-                "INSERT INTO sales (product, amount) VALUES (%s, %s)",
-                (data['product'], data['amount'])
+                "INSERT INTO sales (product, amount,latitude, longitude,sale_date) VALUES (%s, %s,%s,%s,%s)",
+                (data['product'], data['amount'],data['latitude'],data['longitude'],data['sale_date'])
             )
             conn.commit()
             logging.info(f"Mensagem processada: {data}")
