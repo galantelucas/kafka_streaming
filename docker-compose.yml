@@ -2,11 +2,11 @@ services:  # Início da definição dos serviços que serão executados em cont�
 
   zookeeper:  # Nome do serviço Zookeeper.
     image: confluentinc/cp-zookeeper:latest  # Imagem do Zookeeper a ser usada.
-    ports:  # Mapeamento de portas do contêiner para o host.
+    ports:
       - "2181:2181"  # Porta padrão do Zookeeper.
     networks:  # Definição das redes a que o serviço pertence.
-      - app-network  # Nome da rede para o serviço.
-    volumes:  # Mapeamento de volumes para persistência de dados.
+      - app-network
+    volumes:
       - zookeeper-data:/var/lib/zookeeper/data  # Volume para dados do Zookeeper.
       - ./zoo.cfg:/etc/zookeeper/zoo.cfg  # Arquivo de configuração do Zookeeper.
     environment:  # Variáveis de ambiente para configuração do Zookeeper.
@@ -20,11 +20,11 @@ services:  # Início da definição dos serviços que serão executados em cont�
 
   kafka:  # Nome do serviço Kafka.
     image: confluentinc/cp-kafka:latest  # Imagem do Kafka a ser usada.
-    ports:  # Mapeamento de portas do contêiner para o host.
+    ports:
       - "9092:9092"  # Porta padrão do Kafka.
     networks:  # Definição das redes a que o serviço pertence.
-      - app-network  # Nome da rede para o serviço.
-    volumes:  # Mapeamento de volumes para persistência de dados.
+      - app-network
+    volumes:
       - kafka-data:/var/lib/kafka/data  # Volume para dados do Kafka.
     environment:  # Variáveis de ambiente para configuração do Kafka.
       KAFKA_BROKER_ID: 1  # ID do broker Kafka.
@@ -47,11 +47,11 @@ services:  # Início da definição dos serviços que serão executados em cont�
       POSTGRES_USER: postgres  # Nome de usuário do banco de dados.
       POSTGRES_PASSWORD: postgres  # Senha do banco de dados.
       POSTGRES_DB: sales_db  # Nome do banco de dados a ser criado.
-    ports:  # Mapeamento de portas do contêiner para o host.
+    ports:
       - "5432:5432"  # Porta padrão do PostgreSQL.
     networks:  # Definição das redes a que o serviço pertence.
-      - app-network  # Nome da rede para o serviço.
-    volumes:  # Mapeamento de volumes para persistência de dados.
+      - app-network
+    volumes:
       - postgres-data:/var/lib/postgresql/data  # Volume para dados do PostgreSQL.
 
   producer:  # Nome do serviço produtor.
@@ -63,7 +63,7 @@ services:  # Início da definição dos serviços que serão executados em cont�
       KAFKA_BROKER: kafka:9092  # Endereço do broker Kafka.
       KAFKA_TOPIC: sales  # Tópico Kafka onde os dados serão enviados.
     networks:  # Definição das redes a que o serviço pertence.
-      - app-network  # Nome da rede para o serviço.
+      - app-network
 
   consumer:  # Nome do serviço consumidor.
     build: ./consumer  # Caminho para o Dockerfile do consumidor.
@@ -80,17 +80,17 @@ services:  # Início da definição dos serviços que serão executados em cont�
       POSTGRES_PASSWORD: postgres  # Senha do banco de dados.
       POSTGRES_DB: sales_db  # Nome do banco de dados a ser usado.
     networks:  # Definição das redes a que o serviço pertence.
-      - app-network  # Nome da rede para o serviço.
+      - app-network
 
   streamlit:  # Nome do serviço Streamlit.
     build: ./streamlit  # Caminho para o Dockerfile do Streamlit.
-    ports:  # Mapeamento de portas do contêiner para o host.
+    ports:
       - "8501:8501"  # Porta padrão do Streamlit.
     depends_on:  # Dependências do serviço Streamlit.
       db:  # O Streamlit depende do banco de dados.
         condition: service_started  # O Streamlit só iniciará se o banco de dados estiver em execução.
     networks:  # Definição das redes a que o serviço pertence.
-      - app-network  # Nome da rede para o serviço.
+      - app-network
 
 networks:  # Definição das redes a serem utilizadas pelos serviços.
   app-network:  # Nome da rede personalizada.
@@ -98,8 +98,8 @@ networks:  # Definição das redes a serem utilizadas pelos serviços.
 
 volumes:  # Definição de volumes persistentes.
   zookeeper-data:  # Nome do volume para dados do Zookeeper.
-    driver: local  # Tipo de driver do volume (local para armazenamento no host).
-  kafka-data:  # Nome do volume para dados do Kafka.
-    driver: local  # Tipo de driver do volume (local para armazenamento no host).
-  postgres-data:  # Nome do volume para dados do PostgreSQL.
-    driver: local  # Tipo de driver do volume (local para armazenamento no host).
+    driver: local
+  kafka-data:
+    driver: local
+  postgres-data:
+    driver: local
