@@ -43,7 +43,7 @@ cur.execute('''
         amount NUMERIC,
         latitude NUMERIC,
         longitude NUMERIC,
-        sale_date DATE 
+        sale_date DATE
     )
 ''')
 conn.commit()
