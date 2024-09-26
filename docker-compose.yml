@@ -3,101 +3,112 @@ services:  # Início da definição dos serviços que serão executados em cont�
   zookeeper:  # Nome do serviço Zookeeper.
     image: confluentinc/cp-zookeeper:latest  # Imagem do Zookeeper a ser usada.
     ports:
-      - "2181:2181"  # Porta padrão do Zookeeper.
-    networks:  # Definição das redes a que o serviço pertence.
+      - "2181:2181"
+    networks:
       - app-network
     volumes:
-      - zookeeper-data:/var/lib/zookeeper/data  # Volume para dados do Zookeeper.
-      - ./zoo.cfg:/etc/zookeeper/zoo.cfg  # Arquivo de configuração do Zookeeper.
-    environment:  # Variáveis de ambiente para configuração do Zookeeper.
-      ZOOKEEPER_CLIENT_PORT: 2181  # Porta de cliente do Zookeeper.
-      ZOOKEEPER_TICK_TIME: 2000  # Intervalo de tempo entre ticks do Zookeeper.
-    healthcheck:  # Verificação de saúde do serviço.
-      test: ["CMD", "echo", "ruok"]  # Comando para verificar se o Zookeeper está em funcionamento.
-      interval: 5s  # Intervalo entre verificações.
-      timeout: 5s  # Tempo máximo para a verificação.
-      retries: 3  # Número de tentativas antes de considerar o serviço como inativo.
+      - zookeeper-data:/var/lib/zookeeper/data
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    healthcheck:
+      test: ["CMD", "echo", "ruok"]
+      interval: 5s
+      timeout: 5s
+      retries: 3
 
   kafka:  # Nome do serviço Kafka.
-    image: confluentinc/cp-kafka:latest  # Imagem do Kafka a ser usada.
+    image: confluentinc/cp-kafka:latest
     ports:
-      - "9092:9092"  # Porta padrão do Kafka.
-    networks:  # Definição das redes a que o serviço pertence.
+      - "9092:9092"
+    networks:
       - app-network
     volumes:
-      - kafka-data:/var/lib/kafka/data  # Volume para dados do Kafka.
-    environment:  # Variáveis de ambiente para configuração do Kafka.
-      KAFKA_BROKER_ID: 1  # ID do broker Kafka.
-      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181  # Conexão do Kafka com o Zookeeper.
-      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092  # Endereço em que o Kafka escuta.
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092  # Endereço que será usado para se conectar ao broker.
-      KAFKA_LOG_DIRS: /var/lib/kafka/data  # Diretório onde os logs do Kafka são armazenados.
-    depends_on:  # Dependências do serviço Kafka.
-      zookeeper:  # O Kafka depende do Zookeeper.
-        condition: service_healthy  # Kafka só iniciará se o Zookeeper estiver saudável.
-    healthcheck:  # Verificação de saúde do serviço.
-      test: ["CMD", "kafka-broker-api-versions", "--bootstrap-server=kafka:9092"]  # Comando para verificar o estado do Kafka.
-      interval: 10s  # Intervalo entre verificações.
-      timeout: 5s  # Tempo máximo para a verificação.
-      retries: 5  # Número de tentativas antes de considerar o serviço como inativo.
+      - kafka-data:/var/lib/kafka/data
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_LOG_DIRS: /var/lib/kafka/data
+    depends_on:
+      zookeeper:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "kafka-broker-api-versions", "--bootstrap-server=kafka:9092"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  spark-master:
+    build: ./spark_streaming
+    environment:
+      - SPARK_MODE=master
+      - SPARK_MASTER_URL=spark://spark-master:7077
+      - POSTGRES_HOST=db
+      - POSTGRES_PORT=5432
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=sales_db
+      - KAFKA_BROKER=kafka:9092  # Adicionando a variável KAFKA_BROKER
+      - KAFKA_TOPIC=sales  # Definindo a variável KAFKA_TOPIC
+    ports:
+      - "7077:7077"
+      - "8080:8080"
+    networks:
+      - app-network
+    depends_on:
+      kafka:  # Adicionando dependência do Kafka
+        condition: service_healthy
+      db:  # Adicionando dependência do banco de dados
+        condition: service_healthy  # Espera até que o db esteja saudável
+    command: "spark-submit --master spark://spark-master:7077 --jars /path/to/postgresql-42.2.20.jar /app/spark_streaming.py"
 
   db:  # Nome do serviço PostgreSQL.
-    image: postgres:13  # Imagem do PostgreSQL a ser usada.
-    environment:  # Variáveis de ambiente para configuração do PostgreSQL.
-      POSTGRES_USER: postgres  # Nome de usuário do banco de dados.
-      POSTGRES_PASSWORD: postgres  # Senha do banco de dados.
-      POSTGRES_DB: sales_db  # Nome do banco de dados a ser criado.
+    image: postgres:13
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: sales_db
     ports:
-      - "5432:5432"  # Porta padrão do PostgreSQL.
-    networks:  # Definição das redes a que o serviço pertence.
+      - "5432:5432"
+    networks:
       - app-network
     volumes:
-      - postgres-data:/var/lib/postgresql/data  # Volume para dados do PostgreSQL.
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   producer:  # Nome do serviço produtor.
-    build: ./producer  # Caminho para o Dockerfile do produtor.
-    depends_on:  # Dependências do serviço produtor.
-      kafka:  # O produtor depende do Kafka.
-        condition: service_healthy  # O produtor só iniciará se o Kafka estiver saudável.
-    environment:  # Variáveis de ambiente para configuração do produtor.
-      KAFKA_BROKER: kafka:9092  # Endereço do broker Kafka.
-      KAFKA_TOPIC: sales  # Tópico Kafka onde os dados serão enviados.
-    networks:  # Definição das redes a que o serviço pertence.
-      - app-network
-
-  consumer:  # Nome do serviço consumidor.
-    build: ./consumer  # Caminho para o Dockerfile do consumidor.
-    depends_on:  # Dependências do serviço consumidor.
-      kafka:  # O consumidor depende do Kafka.
-        condition: service_healthy  # O consumidor só iniciará se o Kafka estiver saudável.
-      db:  # O consumidor também depende do banco de dados.
-        condition: service_started  # O consumidor só iniciará se o banco de dados estiver em execução.
-    environment:  # Variáveis de ambiente para configuração do consumidor.
-      KAFKA_BROKER: kafka:9092  # Endereço do broker Kafka.
-      KAFKA_TOPIC: sales  # Tópico Kafka do qual os dados serão consumidos.
-      POSTGRES_HOST: db  # Host do banco de dados PostgreSQL.
-      POSTGRES_USER: postgres  # Nome de usuário do banco de dados.
-      POSTGRES_PASSWORD: postgres  # Senha do banco de dados.
-      POSTGRES_DB: sales_db  # Nome do banco de dados a ser usado.
-    networks:  # Definição das redes a que o serviço pertence.
+    build: ./producer
+    depends_on:
+      kafka:
+        condition: service_healthy
+    environment:
+      KAFKA_BROKER: kafka:9092
+      KAFKA_TOPIC: sales
+    networks:
       - app-network
 
   streamlit:  # Nome do serviço Streamlit.
-    build: ./streamlit  # Caminho para o Dockerfile do Streamlit.
+    build: ./streamlit
     ports:
-      - "8501:8501"  # Porta padrão do Streamlit.
-    depends_on:  # Dependências do serviço Streamlit.
-      db:  # O Streamlit depende do banco de dados.
-        condition: service_started  # O Streamlit só iniciará se o banco de dados estiver em execução.
-    networks:  # Definição das redes a que o serviço pertence.
+      - "8501:8501"
+    depends_on:
+      db:
+        condition: service_started
+    networks:
       - app-network
 
-networks:  # Definição das redes a serem utilizadas pelos serviços.
-  app-network:  # Nome da rede personalizada.
-    driver: bridge  # Tipo de driver da rede (bridge é o padrão).
+networks:
+  app-network:
+    driver: bridge
 
-volumes:  # Definição de volumes persistentes.
-  zookeeper-data:  # Nome do volume para dados do Zookeeper.
+volumes:
+  zookeeper-data:
     driver: local
   kafka-data:
     driver: local
