@@ -1,7 +1,8 @@
-services:  # Início da definição dos serviços que serão executados em contêineres.
+version: '3.8'
 
-  zookeeper:  # Nome do serviço Zookeeper.
-    image: confluentinc/cp-zookeeper:latest  # Imagem do Zookeeper a ser usada.
+services:
+  zookeeper:
+    image: confluentinc/cp-zookeeper:latest
     ports:
       - "2181:2181"
     networks:
@@ -17,7 +18,7 @@ services:  # Início da definição dos serviços que serão executados em cont�
       timeout: 5s
       retries: 3
 
-  kafka:  # Nome do serviço Kafka.
+  kafka:
     image: confluentinc/cp-kafka:latest
     ports:
       - "9092:9092"
@@ -44,27 +45,45 @@ services:  # Início da definição dos serviços que serão executados em cont�
     build: ./spark_streaming
     environment:
       - SPARK_MODE=master
-      - SPARK_MASTER_URL=spark://spark-master:7077
+      - SPARK_MASTER_HOST=spark-master
       - POSTGRES_HOST=db
       - POSTGRES_PORT=5432
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=postgres
       - POSTGRES_DB=sales_db
-      - KAFKA_BROKER=kafka:9092  # Adicionando a variável KAFKA_BROKER
-      - KAFKA_TOPIC=sales  # Definindo a variável KAFKA_TOPIC
+      - KAFKA_BROKER=kafka:9092
+      - KAFKA_TOPIC=sales
     ports:
       - "7077:7077"
       - "8080:8080"
     networks:
       - app-network
     depends_on:
-      kafka:  # Adicionando dependência do Kafka
+      kafka:
         condition: service_healthy
-      db:  # Adicionando dependência do banco de dados
-        condition: service_healthy  # Espera até que o db esteja saudável
-    command: "spark-submit --master spark://spark-master:7077 --jars /path/to/postgresql-42.2.20.jar /app/spark_streaming.py"
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    command: ["spark-submit", "--master", "spark://spark-master:7077", "--jars", "/opt/spark/jars/postgresql-42.2.20.jar,/opt/spark/jars/spark-sql-kafka-0-10_2.12-3.5.3.jar,/opt/spark/jars/kafka-clients-3.8.0.jar", "/app/spark_streaming.py"]
 
-  db:  # Nome do serviço PostgreSQL.
+  spark-worker:
+    image: bitnami/spark:latest
+    environment:
+      - SPARK_MODE=worker
+      - SPARK_MASTER_URL=spark://spark-master:7077
+    depends_on:
+      spark-master:
+        condition: service_healthy
+    networks:
+      - app-network
+    ports:
+      - "8081:8081"
+
+  db:
     image: postgres:13
     environment:
       POSTGRES_USER: postgres
@@ -82,7 +101,7 @@ services:  # Início da definição dos serviços que serão executados em cont�
       timeout: 5s
       retries: 5
 
-  producer:  # Nome do serviço produtor.
+  producer:
     build: ./producer
     depends_on:
       kafka:
@@ -93,7 +112,7 @@ services:  # Início da definição dos serviços que serão executados em cont�
     networks:
       - app-network
 
-  streamlit:  # Nome do serviço Streamlit.
+  streamlit:
     build: ./streamlit
     ports:
       - "8501:8501"
