@@ -109,6 +109,12 @@ O incremento de visualizações e organizações poderá ser muito bem explorado
 ---
 
 ![4](https://github.com/user-attachments/assets/a765f7ee-edd5-474d-b91e-2564f720ce16)
+![1](https://github.com/user-attachments/assets/4a85a56a-0d37-4fde-a3e0-7781320d75cc)
+![2](https://github.com/user-attachments/assets/28e4ddb1-bebd-460d-946d-8da4f1411435)
+![3](https://github.com/user-attachments/assets/33a33465-23a5-47c2-92b0-4f9b09a3e890)
+
+
+
 
 
 
