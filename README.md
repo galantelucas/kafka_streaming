@@ -108,6 +108,7 @@ O incremento de visualizações e organizações poderá ser muito bem explorado
 
 ---
 
-![Dashboard de Vendas em Streaming](/images/image.png)
+![4](https://github.com/user-attachments/assets/a765f7ee-edd5-474d-b91e-2564f720ce16)
+
 
 
