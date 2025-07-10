@@ -18,28 +18,28 @@ services:  # Início da definição dos serviços que serão executados em cont�
       timeout: 5s  # Tempo máximo para a verificação.
       retries: 3  # Número de tentativas antes de considerar o serviço como inativo.
 
-  kafka:  # Nome do serviço Kafka.
-    image: confluentinc/cp-kafka:latest  # Imagem do Kafka a ser usada.
+  kafka:
+    image: confluentinc/cp-kafka:7.3.2  # <- versão compatível com Zookeeper
     ports:
-      - "9092:9092"  # Porta padrão do Kafka.
-    networks:  # Definição das redes a que o serviço pertence.
+      - "9092:9092"
+    networks:
       - app-network
     volumes:
-      - kafka-data:/var/lib/kafka/data  # Volume para dados do Kafka.
-    environment:  # Variáveis de ambiente para configuração do Kafka.
-      KAFKA_BROKER_ID: 1  # ID do broker Kafka.
-      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181  # Conexão do Kafka com o Zookeeper.
-      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092  # Endereço em que o Kafka escuta.
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092  # Endereço que será usado para se conectar ao broker.
-      KAFKA_LOG_DIRS: /var/lib/kafka/data  # Diretório onde os logs do Kafka são armazenados.
-    depends_on:  # Dependências do serviço Kafka.
-      zookeeper:  # O Kafka depende do Zookeeper.
-        condition: service_healthy  # Kafka só iniciará se o Zookeeper estiver saudável.
-    healthcheck:  # Verificação de saúde do serviço.
-      test: ["CMD", "kafka-broker-api-versions", "--bootstrap-server=kafka:9092"]  # Comando para verificar o estado do Kafka.
-      interval: 10s  # Intervalo entre verificações.
-      timeout: 5s  # Tempo máximo para a verificação.
-      retries: 5  # Número de tentativas antes de considerar o serviço como inativo.
+      - kafka-data:/var/lib/kafka/data
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_LOG_DIRS: /var/lib/kafka/data
+    depends_on:
+      zookeeper:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "kafka-broker-api-versions", "--bootstrap-server=kafka:9092"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   db:  # Nome do serviço PostgreSQL.
     image: postgres:13  # Imagem do PostgreSQL a ser usada.

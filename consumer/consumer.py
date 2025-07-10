@@ -1,13 +1,17 @@
 import psycopg2
 from kafka import KafkaConsumer
+from kafka.errors import NoBrokersAvailable
 import json
 from time import sleep
 import logging
 
 # Configure logging
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logging.basicConfig(level=logging.INFO,
+                    format='%(asctime)s - %(levelname)s - %(message)s')
 
 # Função para esperar o PostgreSQL estar pronto
+
+
 def wait_for_postgres():
     while True:
         try:
@@ -23,15 +27,37 @@ def wait_for_postgres():
             logging.info("PostgreSQL not available yet. Waiting...")
             sleep(5)
 
-# Esperar o PostgreSQL estar pronto
-wait_for_postgres()
+# Função para esperar o Kafka estar pronto
 
-# Configurações de conexão com o banco de dados PostgreSQL
+
+def wait_for_kafka(topic):
+    RETRIES = 10
+    for attempt in range(RETRIES):
+        try:
+            consumer = KafkaConsumer(
+                topic,
+                bootstrap_servers=['kafka:9092'],
+                value_deserializer=lambda m: json.loads(m.decode('utf-8'))
+            )
+            return consumer
+        except NoBrokersAvailable:
+            logging.warning(
+                f"[Tentativa {attempt+1}/{RETRIES}] Kafka não disponível. Aguardando...")
+            sleep(5)
+    logging.error("Kafka não respondeu após várias tentativas. Encerrando.")
+    exit(1)
+
+
+# Esperar PostgreSQL e Kafka
+wait_for_postgres()
+consumer = wait_for_kafka('sales')
+
+# Conexão com o banco de dados
 conn = psycopg2.connect(
-    host="db",  # Nome do serviço no Docker
-    database="sales_db",  # Nome do banco de dados
-    user="postgres",  # Usuário
-    password="postgres"  # Senha
+    host="db",
+    database="sales_db",
+    user="postgres",
+    password="postgres"
 )
 cur = conn.cursor()
 
@@ -48,21 +74,15 @@ cur.execute('''
 ''')
 conn.commit()
 
-# Configurando o consumidor do Kafka
-consumer = KafkaConsumer(
-    'sales',        # Nome do tópico
-    bootstrap_servers=['kafka:9092'],  # Nome do serviço Kafka no Docker
-    value_deserializer=lambda m: json.loads(m.decode('utf-8'))
-)
-
-# Consumindo mensagens e inserindo no banco de dados
+# Consumindo mensagens do Kafka
 try:
     for message in consumer:
         data = message.value
         try:
             cur.execute(
-                "INSERT INTO sales (product, amount,latitude, longitude,sale_date) VALUES (%s, %s,%s,%s,%s)",
-                (data['product'], data['amount'],data['latitude'],data['longitude'],data['sale_date'])
+                "INSERT INTO sales (product, amount, latitude, longitude, sale_date) VALUES (%s, %s, %s, %s, %s)",
+                (data['product'], data['amount'], data['latitude'],
+                 data['longitude'], data['sale_date'])
             )
             conn.commit()
             logging.info(f"Mensagem processada: {data}")

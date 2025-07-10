@@ -1,10 +1,13 @@
 from kafka import KafkaProducer
+from kafka.errors import NoBrokersAvailable
 import json
 import time
 import random
-from datetime import datetime,timedelta
+from datetime import datetime, timedelta
 
 # Função para gerar coordenadas aleatórias dentro de continentes
+
+
 def generate_random_coordinates():
     latitudes = {
         "North America": (15.0, 75.0),
@@ -24,19 +27,18 @@ def generate_random_coordinates():
         "Oceania": (110.0, 180.0)
     }
 
-    # Escolhe um continente aleatório
     continent = random.choice(list(latitudes.keys()))
-
-    # Gera coordenadas aleatórias dentro dos limites do continente escolhido
-    latitude = round(random.uniform(latitudes[continent][0], latitudes[continent][1]), 6)
-    longitude = round(random.uniform(longitudes[continent][0], longitudes[continent][1]), 6)
+    latitude = round(random.uniform(*latitudes[continent]), 6)
+    longitude = round(random.uniform(*longitudes[continent]), 6)
 
     return latitude, longitude
+
 
 def get_sale_data():
     latitude, longitude = generate_random_coordinates()
     random_days = random.randint(0, 365)
-    sale_date = (datetime.now() - timedelta(days=random_days)).strftime('%Y-%m-%d')
+    sale_date = (datetime.now() - timedelta(days=random_days)
+                 ).strftime('%Y-%m-%d')
 
     return {
         'sale_id': random.randint(1, 1000),
@@ -47,13 +49,31 @@ def get_sale_data():
         'sale_date': sale_date
     }
 
-# Configuração do Kafka Producer
-producer = KafkaProducer(
-    bootstrap_servers='kafka:9092',
-    value_serializer=lambda v: json.dumps(v).encode('utf-8'),
-    acks='all'
-)
+# Função para esperar o Kafka estar pronto
 
+
+def wait_for_kafka():
+    RETRIES = 10
+    for attempt in range(RETRIES):
+        try:
+            producer = KafkaProducer(
+                bootstrap_servers='kafka:9092',
+                value_serializer=lambda v: json.dumps(v).encode('utf-8'),
+                acks='all'
+            )
+            return producer
+        except NoBrokersAvailable:
+            print(
+                f"[Tentativa {attempt+1}/{RETRIES}] Kafka não disponível. Aguardando...")
+            time.sleep(5)
+    print("Kafka não respondeu após várias tentativas. Encerrando.")
+    exit(1)
+
+
+# Esperar Kafka
+producer = wait_for_kafka()
+
+# Enviar mensagens continuamente
 while True:
     sale_data = get_sale_data()
     producer.send('sales', value=sale_data)
